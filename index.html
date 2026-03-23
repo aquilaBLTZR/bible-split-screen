@@ -131,15 +131,17 @@ function handleFiles(files){
   }
 }
 
-// --- Calculate centers for 2/3/4 images ---
+// --- Calculate centers for 1-4 images ---
 function getCenters(count, spacing, w, h){
   let centersX=[], centersY=[];
-  if(count===2){
+  if(count===1){
+    centersX=[w/2]; centersY=[h/2];
+  } else if(count===2){
     centersX=[w/4 - spacing/2, 3*w/4 + spacing/2];
     centersY=[h/2, h/2];
   } else if(count===3){
     centersX=[w/4 - spacing/2, 3*w/4 + spacing/2, w/2];
-    centersY=[h/3, h/3, 2*h/3]; // third image bottom-center
+    centersY=[h/3, h/3, 2*h/3];
   } else if(count===4){
     centersX=[w/4 - spacing/2, 3*w/4 + spacing/2, w/4 - spacing/2, 3*w/4 + spacing/2];
     centersY=[h/4, h/4, 3*h/4, 3*h/4];
@@ -189,10 +191,17 @@ sizeSlider.addEventListener('input',()=>{ collageScale=sizeSlider.value; renderG
 spacingSlider.addEventListener('input',()=>{ spacing=spacingSlider.value; renderGrid(); sendFullscreenUpdate(); });
 
 // --- Fullscreen ---
-fullscreenBtn.addEventListener('click',()=>{
+fullscreenBtn.addEventListener('click', ()=>{
   if(!fullscreenWindow || fullscreenWindow.closed){
-    fullscreenWindow=window.open('','fullscreen','width='+window.innerWidth+',height='+window.innerHeight);
-    fullscreenWindow.document.write('<html><head><title>Fullscreen Preview</title></head><body style="margin:0;overflow:hidden;"></body></html>');
+    fullscreenWindow = window.open('', 'fullscreen', 'width='+window.innerWidth+',height='+window.innerHeight);
+    fullscreenWindow.document.write(`
+      <html>
+      <head><title>Fullscreen Preview</title></head>
+      <body style="margin:0;overflow:hidden;background:#000;">
+        <div id="grid" style="position:relative;width:100vw;height:100vh;"></div>
+      </body>
+      </html>
+    `);
     fullscreenWindow.document.close();
   }
   sendFullscreenUpdate();
@@ -203,10 +212,39 @@ function sendFullscreenUpdate(){
   if(fullscreenWindow && !fullscreenWindow.closed){
     const w=grid.clientWidth, h=grid.clientHeight;
     const frameURL = images.length===2?frame2URL:frame4URL;
-    const data={images, spacing, collageScale, w, h, frameURL};
-    fullscreenWindow.postMessage(data,'*');
+    fullscreenWindow.postMessage({images, spacing, collageScale, w, h, frameURL, fullscreenUpdate:true}, '*');
   }
 }
+
+// --- Render fullscreen ---
+window.addEventListener('message', e=>{
+  if(e.data.fullscreenUpdate && e.source === window){
+    const {images, spacing, collageScale, w, h, frameURL} = e.data;
+    const gridFS = fullscreenWindow.document.getElementById('grid');
+    if(!gridFS) return;
+    gridFS.innerHTML='';
+    const {centersX, centersY} = getCenters(images.length, spacing, w, h);
+    images.forEach((imgData,i)=>{
+      const img = fullscreenWindow.document.createElement('img');
+      img.src = imgData.src;
+      img.style.position='absolute';
+      img.style.left=centersX[i]+'px';
+      img.style.top=centersY[i]+'px';
+      img.style.width=(images.length===2?w/2:w/2)+'px';
+      img.style.height=(images.length===2?h:h/2)+'px';
+      img.style.transform=`translate(-50%,-50%) scale(${collageScale})`;
+      img.style.objectFit='contain';
+      gridFS.appendChild(img);
+    });
+    const frame = fullscreenWindow.document.createElement('img');
+    frame.src=frameURL;
+    frame.style.position='absolute';
+    frame.style.width='100%';
+    frame.style.height='100%';
+    frame.style.pointerEvents='none';
+    gridFS.appendChild(frame);
+  }
+});
 
 // --- Export ---
 function exportImage(){
@@ -228,16 +266,24 @@ function exportImage(){
       ctx.scale(collageScale,collageScale);
       ctx.drawImage(img,-slotW/2,-slotH/2,slotW,slotH);
       ctx.restore();
-    };
+      if(i===images.length-1){
+        const frame=new Image();
+        frame.src=images.length===2?frame2URL:frame4URL;
+        frame.onload=()=>{
+          ctx.drawImage(frame,0,0,w,h);
+          const link=document.createElement('a');
+          link.download='collage.png';
+          link.href=canvas.toDataURL();
+          link.click();
+        }
+      }
+    }
   });
-
-  const frame=new Image();
-  frame.src=images.length===2?frame2URL:frame4URL;
-  frame.onload=()=>{ ctx.drawImage(frame,0,0,w,h); const link=document.createElement('a'); link.download='collage.png'; link.href=canvas.toDataURL(); link.click(); };
 }
 
 // --- Window resize ---
 window.addEventListener('resize',()=>{ renderGrid(); sendFullscreenUpdate(); });
 </script>
+
 </body>
 </html>
