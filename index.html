@@ -2,12 +2,14 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Responsive 4-Image Collage</title>
+<title>Full Screen 4-Image Collage</title>
 <style>
 html, body {
   margin: 0;
   height: 100%;
+  width: 100%;
   font-family: Arial, sans-serif;
+  overflow: hidden; /* Prevent scrolling */
   background-size: cover;
   background-position: center;
 }
@@ -20,6 +22,7 @@ html, body {
   background: #222;
   color: white;
   flex-wrap: wrap;
+  box-sizing: border-box;
 }
 
 button, input[type=range] {
@@ -28,7 +31,7 @@ button, input[type=range] {
 
 #dropZone {
   border: 2px dashed #666;
-  padding: 15px;
+  padding: 10px;
   text-align: center;
   background: white;
   margin: 10px;
@@ -43,9 +46,10 @@ button, input[type=range] {
 
 #grid {
   display: grid;
-  gap: 4px;
+  gap: 2px;
+  /* 2x2 layout fills remaining viewport */
   width: 100vw;
-  height: calc(100vh - 140px); /* Adjust to remaining screen */
+  height: calc(100vh - 120px); /* Account for top bar + remove buttons + dropZone */
   grid-template-columns: 1fr 1fr;
   grid-template-rows: 1fr 1fr;
 }
@@ -54,7 +58,6 @@ button, input[type=range] {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  border-radius: 6px;
   transition: transform 0.2s;
 }
 </style>
@@ -83,14 +86,14 @@ const bgBtn = document.getElementById('bgBtn');
 const sizeSlider = document.getElementById('sizeSlider');
 const removeButtonsDiv = document.getElementById('removeButtons');
 
-// --- Drag and drop images ---
+// Drag & drop images
 dropZone.addEventListener('dragover', e => e.preventDefault());
 dropZone.addEventListener('drop', e => {
   e.preventDefault();
   handleFiles(e.dataTransfer.files);
 });
 
-// --- Background image ---
+// Background image picker
 bgBtn.addEventListener('click', () => {
   const input = document.createElement('input');
   input.type = 'file';
@@ -108,7 +111,7 @@ bgBtn.addEventListener('click', () => {
   input.click();
 });
 
-// --- Handle uploaded images ---
+// Handle uploaded images
 function handleFiles(files) {
   for (let file of files) {
     if (file.type.startsWith('image/') && images.length < 4) {
@@ -122,7 +125,7 @@ function handleFiles(files) {
   }
 }
 
-// --- Render the collage ---
+// Render collage
 function renderGrid() {
   grid.innerHTML = '';
   images.forEach((imgData) => {
@@ -132,7 +135,7 @@ function renderGrid() {
     grid.appendChild(img);
   });
 
-  // --- Remove buttons ---
+  // Remove buttons
   removeButtonsDiv.innerHTML = '';
   for (let i = 0; i < 4; i++) {
     const btn = document.createElement('button');
@@ -148,13 +151,13 @@ function renderGrid() {
   }
 }
 
-// --- Universal collage scale ---
+// Collage universal scale
 sizeSlider.addEventListener('input', () => {
   collageScale = sizeSlider.value;
   renderGrid();
 });
 
-// --- Export ---
+// Export collage
 function exportImage() {
   const canvas = document.createElement('canvas');
   const ctx = canvas.getContext('2d');
@@ -180,7 +183,7 @@ function exportImage() {
   }, 500);
 }
 
-// --- Full screen tab ---
+// Full screen tab
 function openFullscreen() {
   const newTab = window.open();
   let html = `<html><body style="margin:0;display:grid;grid-template-columns:repeat(2,1fr);grid-template-rows:repeat(2,1fr);">`;
@@ -190,6 +193,9 @@ function openFullscreen() {
   html += `</body></html>`;
   newTab.document.write(html);
 }
+
+// Make grid resize when window changes
+window.addEventListener('resize', renderGrid);
 </script>
 
 </body>
